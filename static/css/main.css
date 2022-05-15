@@ -82,6 +82,11 @@ body {
   line-height: 0;
   font-size: 0.8rem;
   text-align: right;
+  pointer-events: none;
+}
+
+.navbar-brand * {
+  pointer-events: none;
 }
 
 @media (min-width: 100px) {
