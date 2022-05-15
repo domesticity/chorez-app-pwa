@@ -1,25 +1,12 @@
 {
-  // Name of the app and short name in case there isn't enough space
   "name": "Chorez (with a z)",
   "short_name": "Chorez",
-  // Description what your app is
-  "description": "Chores app for Tushar and Keya",
-
-  // Scope and start URL - these need to change to yours
+  "description": "Chores management app",
   "scope": "/chorez-app-pwa/",
   "start_url": "/chorez-app-pwa/",
-
-  // colours of the app as displayed in the installer
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
-
-  // Display of the app. 
-  //This could be "standalone", "fullscreen", "minimal-ui" or "browser"
   "display": "standalone", 
-  
-  // The possible icons to display. Make sure to change the src URL,
-  // the type and the size to your needs. If the size isn't correct, 
-  // you may not be able to install the app. 
   "icons": [
       {
         "src": "https://user-images.githubusercontent.com/4995097/168215368-dfba9545-734f-4dde-bf8f-3acdc8e0ee74.png",
