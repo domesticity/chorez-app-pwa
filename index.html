@@ -433,7 +433,7 @@ function init_state(){
 function init_pwa(){
   if (navigator.serviceWorker) {
     navigator.serviceWorker.register (
-      '/chorez-app-pwa/static/js/sw.js',
+      '/chorez-app-pwa/sw.js',
       {scope: '/chorez-app-pwa/'}
     )
   }
