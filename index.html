@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<head>
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="canonical" href="https://domesticity.github.io/chorez-app-pwa/"/>
+<link rel="manifest" href="/chorez-app-pwa/manifest.webmanifest">
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.0/jquery-ui.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="static/css/main.css">
+<script src="static/js/util.js"></script>
+<script src="static/js/taphold.js"></script>
+<script src="static/js/jquery.ui.touch-punch.min.js"></script>
+
+</head>
+
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <div style="display:flex"> 
+
+      <span class="navbar-brand">
+        <table>
+          <tr><th>Chorez</th></tr>
+          <tr><td>(with a z)</td></tr>
+        </table>
+      </span>
+      
+      <div id="nav-users"> 
+      <!-- one button per user here -->
+      </div>
+    
+    </div>
+    <button id="new-chore-button" class="btn bi bi-plus-square btn-outline-secondary" onclick="open_newchore_modal()"></button>
+      <button id="edit-state-button" class="btn bi bi-gear btn-outline-secondary hidden" onclick="edit_state()"></button>
+    <button id="edit-done-button" class="btn bi bi-check-square btn-outline-secondary hidden" onclick="exit_edit_mode()"> Done</button>
+
+  </div>
+</nav>
+
+<!-- Chore modal: To submit a chore OR to create a new chore -->
+<div class="modal fade" id="chore-modal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+    
+      <div class="modal-header">
+        <b><span class="chore-title">Modal Heading</span></b>
+        <button id="modal-remind-button" type="button" class="btn bi bi-bell" onclick="send_chore_reminder()"></button>
+        <button id="modal-close-button" type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <div class="modal-body">
+        <li class="chore-desc">Description </li> <hr>
+        <li class="chore-completed">Completed by: </li>
+        <li class="chore-date">Date: </li>
+        <li>
+            Message? 
+            <input class="chore-message form-check-input" type="checkbox" value="" checked>
+            <label class="form-check-label" for="message-checkbox">
+        </li>
+      </div>
+
+    <div>
+      <div id="modal-user-div">
+        <!-- one button per user here -->
+      </div>
+    </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- Edit chore details (name, description) -->
+<div class="modal fade" id="chore-edit-modal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <b><span class="chore-title">Modal Heading</span></b>
+        <button id="modal-done-edit" class="btn bi bi-check-square"></button>
+      </div>
+      <div class="modal-body">
+        <li class="chore-desc">Description </li> <hr>
+        <li class="chore-completed">Completed by: </li>
+        <li class="chore-date">Date: </li>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Edit user properties: Name, initials, color -->
+<div class="modal fade" id="user-modal">
+  <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal-content">
+    
+      <div class="modal-header">
+        <b><span class="chore-title">Edit user</span></b>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      
+      <div class="modal-body">
+        <li class="user-modal-name">Name: <span contenteditable="true"> ??? <span></li>
+        <li class="user-modal-initials">Initials: <span contenteditable="true"> ??? <span></li>
+        <label for="user-color">Color: </label>
+        <input type="color" id="user-color" value="#f6b73c">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Directly edit global state -->
+<div class="modal fade" id="edit-state-modal">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <b><span>Edit state</span></b>
+        <button id="state-done-edit" class="btn bi bi-check-square"></button>
+      </div>
+      <div contenteditable="true" class="modal-body"><pre></pre></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Empty grid - populated on init with cell template below -->
+<div id="chore-grid" class="wrapper-chores">
+  <ul id="chore-list" class="auto-grid sortable">
+  </ul>
+</div>
+
+<template id="cell-template">
+  <div class="gridcell" id="cell-{name}">
+    <div><span class="chore-name">{name}</span></div>
+    <div class="cell-overlay hidden">
+      <button style="grid-row: 2" class="btn bi bi-pencil-square btn-outline-secondary" onclick="event.stopPropagation(); edit_chore(this)"></button>
+      <button style="grid-row: 2" class="btn bi bi-trash3 btn-outline-secondary" onclick="event.stopPropagation(); delete_chore(this)"></button>
+    </div>
+  </div>
+</template>
+
+
+
+
+<script>
+
+// ------------------------------------------------------------------ //
+// Open modals: chore update, chore edit, user update, state update
+// ------------------------------------------------------------------ //
+
+function open_chore_modal(name, edit=false){
+  let chore = state.chores[name]
+  let modal = $('#chore-modal')
+  let user = state.users[chore.user].name
+  modal.find('.chore-title').text(name);
+  modal.find('.chore-desc').text(chore.desc);
+  modal.find('.chore-completed').text(`Completed by: ${user}`);
+  modal.find('.chore-date').text(`Date: ${chore.ts}`);
+  modal.find('.chore-message').prop('checked', true);
+  modal.find('.chore-title').attr('contenteditable','false')
+  modal.find('.chore-desc').attr('contenteditable','false')
+
+  if (edit){
+    modal.find('.chore-title').attr('contenteditable','true')
+    modal.find('.chore-desc').attr('contenteditable','true')
+  }
+
+  modal.modal('show');
+}
+
+function open_newchore_modal(){
+  let placeholder = {'user': 'Tushar', 'ts': '--', 'desc': '--description--'}
+  state.chores['--name--'] = placeholder
+  open_chore_modal('--name--', edit=true)
+  delete state.chores['--name--']
+}
+
+
+function open_user_modal(user){
+  let user_data = state.users[user]
+  let modal = $('#user-modal')
+  modal.find('.user-modal-name').find('span').text(user_data.name);
+  modal.find('.user-modal-initials').find('span').text(user_data.initials);
+  modal.find('#user-color').val(user_data.color);
+
+  // update name
+  let old_name = user_data.name
+  $('.user-modal-name').find('span').unbind().blur(function(){
+      let new_name = $(this).html()
+      if (new_name != old_name){
+        lambda_update_user(user, 'name', new_name)
+      }
+      old_name = new_name
+  });
+
+  // update initials
+  let old_initials = user_data.initials
+  $('.user-modal-initials').find('span').unbind().blur(function(){
+      let new_initials = $(this).html()
+      if (new_initials != old_initials){
+        lambda_update_user(user, 'initials', new_initials)
+        init_navbar(only_users=true)
+      }
+      old_initials = new_initials
+  });
+
+  // update color
+  $("#user-color").unbind().on('change', function(){
+    let new_color = $(this).val()   
+    lambda_update_user(user, 'color', new_color)
+    Object.entries(state.chores).forEach(([name, data]) => {
+      if (data.user!=user)
+        return
+      $(`#cell-${name}`).css({'background': new_color})
+    })
+    init_navbar(only_users=true)
+  })
+
+  modal.modal('show');
+}
+
+
+function edit_state(){
+  let modal = $('#edit-state-modal')
+  modal.find('pre').text(JSON.stringify(state, null, 2))
+  modal.modal('show');
+
+  modal.find('#state-done-edit').unbind().on('click', function(){
+    let m = $(this).closest('.modal')
+    let new_state = m.find('pre').text()
+
+    try{
+      new_state = JSON.parse(new_state);
+      lambda_update_state(new_state)
+      m.modal('hide');
+      reset();
+    }
+    catch(e){
+      alert(e);
+    }
+    
+  })
+
+}
+
+
+// ------------------------------------------------------------------ //
+// Modal actions: Submit update, remind user, edit chore, delete
+// ------------------------------------------------------------------ //
+
+function submit_modal(user){
+
+  let modal = $('#chore-modal')
+  modal.modal('hide')
+
+  let name = modal.find('.chore-title').text().toLowerCase();
+  let ts = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+  ts = ts.match(/([^T]+)/)[0].split('-').reverse().join('-'); // dd-mm-yyyy
+  let desc = modal.find('.chore-desc').text()
+  let is_new = !(name in state.chores)
+
+  let chore = {'user': user, 'ts': ts, 'desc': desc}
+  
+
+  let cell = create_cell(name, chore)
+  if (is_new){
+    $('#chore-list').append(cell)
+    order = [...state.order, name]
+    lambda_update_order(order)
+  }
+  else{
+    $(`#cell-${name}`).replaceWith(cell);
+    if (state.chores[name].user == user)
+      return
+  }
+
+  let message = modal.find('.chore-message').is(':checked')
+  lambda_update_chore(name, chore, message)
+}
+
+function send_chore_reminder(){
+  let modal = $('#chore-modal')
+  modal.modal('hide')
+
+  let name = modal.find('.chore-title').text().toLowerCase();
+  lambda_remind_chore(name)
+}
+
+
+// Make text elements of the modal editable and submit
+function edit_chore(el){
+
+  let cell = $(el).closest('.gridcell');
+  let name = cell.attr('chore-id')
+
+  let chore = state.chores[name]
+  let modal = $('#chore-edit-modal')
+  let user = state.users[chore.user].name
+  modal.find('.chore-title').text(name).attr('contenteditable','true')
+  modal.find('.chore-desc').text(chore.desc).attr('contenteditable','true')
+  modal.find('.chore-completed').text(`Completed by: ${user}`);
+  modal.find('.chore-date').text(`Date: ${chore.ts}`);
+  modal.modal('show');
+
+  modal.find('#modal-done-edit').unbind().on('click', function(){
+
+    let m = $(this).closest('.modal')
+    m.modal('hide');
+
+    let new_name = m.find('.chore-title').text().toLowerCase()
+    let new_desc = m.find('.chore-desc').text()
+
+    if ((new_name == name) && (new_desc == state.chores[name].desc))
+      return
+
+    let chore = {...state.chores[name], 'desc': new_desc}
+    if (name != new_name){
+      lambda_delete_chore(name, new_name)
+    }
+    lambda_update_chore(new_name, chore)
+
+    // replace cell name and attribute
+    let cell = create_cell(new_name, chore)
+    cell.find('.cell-overlay').toggleClass('hidden')
+    $(`#cell-${name}`).replaceWith(cell);
+    
+  })
+
+}
+
+function delete_chore(el){
+  let cell = $(el).closest('.gridcell');
+  let name = cell.attr('chore-id')
+
+  let confirm_delete = window.confirm(`Are you sure you want to delete: ${name}`);
+  if (confirm_delete){
+    lambda_delete_chore(name)
+    $(`#cell-${name}`).remove()
+  }
+}
+
+// ------------------------------------------------------------------ //
+// chore grid initialization
+// ------------------------------------------------------------------ //
+
+function enter_edit_mode(){
+  // already in edit mode
+  if (!$('.cell-overlay').hasClass('hidden'))
+    return
+
+  $('#new-chore-button').addClass('hidden')
+  $('#edit-done-button, #edit-state-button, .cell-overlay').removeClass('hidden')
+  $('.sortable').sortable('enable');
+}
+
+function exit_edit_mode(){
+  $('#new-chore-button').removeClass('hidden')
+  $('#edit-done-button, #edit-state-button, .cell-overlay').addClass('hidden')
+  $('.sortable').sortable('disable');
+  lambda_update_order()
+}
+
+function create_cell(name, data){
+  let parsed_name = parse_name(name)
+  let cell = clone_template('cell-template').find('.gridcell')
+  cell.find('.chore-name').html(parsed_name)
+  cell.css({'background': state.users[data.user].color})
+  cell.attr({'id': `cell-${name}`, 'chore-id':name})
+  cell.on('click', () => open_chore_modal(name))
+  cell.on('taphold', enter_edit_mode)
+  return cell
+}
+
+function init_chore_grid(){
+
+  let chore_ul = $('#chore-list').empty();
+  state.order.forEach(function(name){
+    let chore = state.chores[name];
+    let cell = create_cell(name, chore)
+    chore_ul.append(cell)
+  })
+
+  $('.sortable').sortable({
+    scroll: false,
+    containment: 'window',
+    stop: () => lambda_update_order(),
+  });
+
+  $('.sortable').sortable('disable');
+
+}
+
+function init_navbar(only_users=false){
+
+  if (!only_users){
+    $('#new-chore-button').removeClass('hidden')
+    $('#edit-done-button').addClass('hidden')
+    $('#edit-state-button').addClass('hidden')
+  }
+
+  let modal_user_buttons = $('#modal-user-div').empty();
+  let nav_user_buttons = $('#nav-users').empty();
+  Object.entries(state.users).forEach(([user, data]) => {
+    let button = $(
+      `<button type="button" class="btn btn-primary user-button">${data.initials}</button>`
+    )
+    button.css({'background': data.color, 'border': 'none'})
+
+    let nav_button = button.clone()
+    nav_button.on('click', () => open_user_modal(user))
+
+    let modal_button = button.clone()
+    modal_button.on('click', () => submit_modal(user))
+
+    modal_user_buttons.append(modal_button)
+    nav_user_buttons.append(nav_button)
+  })
+}
+
+function init_state(){
+  lambda_call('get_state', {}, false, function(data){
+    response = JSON.parse(data.response)
+    state = response.data
+  })
+}
+
+function init_pwa(){
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.register (
+      '/chorez-app-pwa/static/js/sw.js',
+      {scope: '/chorez-app-pwa/'}
+    )
+  }
+}
+
+// ------------------------------------------------------------------ //
+// document ready
+// ------------------------------------------------------------------ //
+
+function reset(){
+  init_pwa();
+  init_state();
+  init_navbar();
+  init_chore_grid();
+}
+
+var state = {}
+$(document).ready(function(){
+  reset();
+})
+
+</script>
+
+
+</body>
+</html>
